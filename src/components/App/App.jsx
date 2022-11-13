@@ -1,4 +1,5 @@
-import React, { Component} from "react";
+// import React, { Component} from "react";
+import { useState, useEffect } from "react";
 import { App, TitleInfo} from "./App.styled";
 import Api from "components/api/api-image";
 import Search from "components/SearchBar";
@@ -18,88 +19,77 @@ const Status = {
   RESOLVED: 'resolved',
   REJECTED: 'rejected',
 };
-const INITIAL_STATE = {
-  results: [],
-  totalHits: 0,
-  searchValue: '',
-  page: 1,
-  per_page: 12,
-  status: Status.IDLE,
-}
 
+const AppC = () => {
+  const [results, setResults] = useState([]);
+  const [totalHits, setTotalHits] = useState(0);
+  const [searchValue, setSearchValue] = useState('');
+  const [page, setPage] = useState(1);
+  const [per_page, setPer_page] = useState(12);
+  const [status, setStatus] = useState(Status.IDLE); 
 
-
-class AppC extends Component {
-  state={...INITIAL_STATE}
-  
-  componentDidUpdate(_, prevState) {
-    if(prevState.searchValue !== this.state.searchValue || prevState.page !== this.state.page) {
-      this.setState({ status: Status.PENDING });
-      this.getPhotos();
+  useEffect(()=>{
+    if(searchValue==='') {
+      return;
     }
-  }
-  
-  async getPhotos() {
-    const {searchValue, page, per_page} = this.state;
-    const params = {searchValue, page, per_page};
-    this.setState({ status: Status.PENDING })
-    try {
-      const {data} = await Api(params);
-      if(searchValue.trim()==='') {
-        return;
+    async function getPhotos () {
+      setStatus(Status.PENDING);
+      const params = {searchValue, page, per_page};
+      try {
+        const {data} = await Api(params);
+        setResults(prev=>[...prev, ...data.hits]);
+        setTotalHits(data.totalHits);
+        setStatus(Status.RESOLVED);
+        totalResults(data)
       }
-      this.setState(prevState=>({
-        results: [...prevState.results, ...data.hits],
-        totalHits: data.totalHits,
-        status: Status.RESOLVED 
-      }))
-      this.totalResults(data)
+      
+      catch(error) {
+          setStatus(Status.REJECTED)
+      }
     }
-    
-    catch(error) {
-        this.setState({error})
-        this.setState(({
-          status: Status.REJECTED
-        }))
-    }
-  }
-
-  totalResults=(value) => {
-      if(value.totalHits!==0 && this.state.page===1) {
+    getPhotos();
+    const totalResults = value => {
+      if(value.totalHits!==0 && page===1) {
       toast.success(`We found ${value.totalHits} images for your request`)
       }
       if(value.totalHits===0) {
-      toast.info(`No results for your search '${this.state.searchValue}', please try again`)
+      toast.info(`No results for your search '${searchValue}', please try again`)
       }
+  }
+  }, [page, per_page, searchValue])
+
+
+const handleFormSubmit = searchValue => {
+  reset()
+  setSearchValue(searchValue );
+};
+
+const reset = () => {
+  setResults([]);
+  setTotalHits(0)
+  setSearchValue('')
+  setPage(1);
+  setPer_page(12);
+  setStatus(Status.IDLE);
 }
 
-  handleFormSubmit = searchValue => {
-    this.setState({...INITIAL_STATE})
-    this.setState({ searchValue });
-  };
+const handleBtnMore = () => {
+  setPage(prev=>prev+1);
+}
 
-  handleBtnMore = () => {
-    this.setState(prevState=>({
-      page: prevState.page+1
-    }))
-  }
-
-  render() {
-    const {results, status, totalHits, per_page, page} = this.state;
-      return (
-        <App>
-      <ScrollToTop></ScrollToTop>
-      <Search onSubmitForm={this.handleFormSubmit}/>
-      {status==='idle' && <TitleInfo>Try to enter a value...</TitleInfo>}
-      <Gallery results={results}>
-       {status==='resolved' && <GalleryItem/>}
-      </Gallery>
-      {status==='pending' && <Loader/>}
-      {totalHits!==0 && totalHits / per_page > page && <BtnMore text='Load more' type='button' onClickBtn={this.handleBtnMore}></BtnMore>}
-      <ToastContainer/>
-      </App>
-      )
-  }
+return (
+  <App>
+<ScrollToTop></ScrollToTop>
+<Search onSubmitForm={handleFormSubmit}/>
+{status==='idle' && <TitleInfo>Try to enter a value...</TitleInfo>}
+<Gallery results={results}>
+ {status==='resolved' && <GalleryItem/>}
+</Gallery>
+{status==='pending' && <Loader/>}
+{totalHits!==0 && totalHits / per_page > page && <BtnMore text='Load more' type='button' onClickBtn={handleBtnMore}></BtnMore>}
+<ToastContainer/>
+</App>
+)
 }
 
 AppC.propTypes = {
@@ -107,6 +97,6 @@ AppC.propTypes = {
   status: PropTypes.string,
   totalHits: PropTypes.number,
   per_page: PropTypes.number,
-  page: PropTypes.number
+  page: PropTypes.number,
 }
 export default AppC;
