@@ -1,4 +1,3 @@
-// import React, { Component} from "react";
 import { useState, useEffect } from "react";
 import { App, TitleInfo} from "./App.styled";
 import Api from "components/api/api-image";
@@ -34,7 +33,7 @@ const AppC = () => {
     }
     async function getPhotos () {
       setStatus(Status.PENDING);
-      const params = {searchValue, page, per_page};
+      const params = {searchValue, page};
       try {
         const {data} = await Api(params);
         setResults(prev=>[...prev, ...data.hits]);
@@ -56,7 +55,7 @@ const AppC = () => {
       toast.info(`No results for your search '${searchValue}', please try again`)
       }
   }
-  }, [page, per_page, searchValue])
+  }, [page, searchValue])
 
 
 const handleFormSubmit = searchValue => {
